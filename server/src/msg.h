@@ -32,13 +32,13 @@ typedef struct msg
 			uint8_t y;
 		} move;
 	
-    enum
-    {
-    	false,
-    	true,
-    } turn;
+		enum
+		{
+			false,
+			true,
+		} turn;
     
-    state_t state;
-  } data;
+		state_t state;
+	} data;
 
 } message_t __attribute__ ((packed));
