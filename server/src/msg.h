@@ -1,5 +1,8 @@
 //wiadomosc przekazywana miedzy klientem a serwerem
+#include <stdint.h>
 #define HDR_SIZE 2
+#ifndef MSG_H
+#define MSG_H
 typedef enum
 {
   JOIN,			//pole name wewnatrz
@@ -42,3 +45,4 @@ typedef struct msg
 	} data;
 
 } message_t __attribute__ ((packed));
+#endif

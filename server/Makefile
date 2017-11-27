@@ -1,5 +1,5 @@
 TARGET = oxserver
-LIBS = 
+LIBS = -lpthread
 CC = gcc
 CFLAGS = -g -Wall
 
