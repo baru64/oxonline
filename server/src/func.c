@@ -19,7 +19,7 @@ void *cl_session(void* arg)
         
         IPCbuffer.player[IPCbuffer.writeIdx] = conIdx;
         IPCbuffer.messages[IPCbuffer.writeIdx] = temp;
-        printf("Msg added to buffer\n");
+        printf("Msg added to buffer. from %d %d\n", conIdx, IPCbuffer.player[IPCbuffer.writeIdx]);
         
         IPCbuffer.writeIdx++;
         if (IPCbuffer.writeIdx == BUF_LEN)
@@ -43,22 +43,20 @@ void *sender(void *arg)
     {
         if (IPCbuffer.readIdx != IPCbuffer.writeIdx)
         {
-            printf("Ipc buffer sending\n");
+            //printf("Ipc buffer sending\n");
             message_t *msg = &IPCbuffer.messages[IPCbuffer.readIdx];
 
-            	//dodac semafor do clsess TODO
-            	// #przyejrzystosckodu
- 
+ 			printf("Received msg type: %hhu\n", msg->type);
             switch(msg->type)
             {
             	case JOIN:
             		printf("join recieved. name = %s\n",msg->data.name);
-            		//GAME.player_name[IPCbuffer.player[IPCbuffer.readIdx]] = msg->data.name;
+            		
             		memcpy(GAME.player_name[IPCbuffer.player[IPCbuffer.readIdx]], msg, 20);
             		if(connections[0].notEmpty == 1 && connections[1].notEmpty == 1) //czy obaj gracze sa polaczeni
             		{
             			//wyslanie obu graczom joina i start(losowanie kto zaczyna), zapisanie odpowiedniego gracza w active_player
-            			message_t join;// = {JOIN, 22, GAME.player_name[1]};
+            			message_t join;
             			join.type = JOIN; join.len = 22;
             			memcpy(join.data.name,GAME.player_name[0], 20);
             			send(connections[1].fd, &join, join.len, 0);
@@ -73,6 +71,7 @@ void *sender(void *arg)
             			starting = (starting + 1) % 2;
             			start.data.turn = false;
             			send(connections[starting].fd, &start, start.len, 0);
+            			printf("join forwarded, starting player: %d\n", starting);
             		}
             	break;
             	case MOVE:
@@ -107,7 +106,7 @@ void *sender(void *arg)
             }
             IPCbuffer.readIdx++;
             IPCbuffer.readIdx %= BUF_LEN;
-            
+            printf("Read id:%d\n", IPCbuffer.readIdx);
             
         }
     }

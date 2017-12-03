@@ -3,7 +3,7 @@
 #define STRUCTS_H
 #include "msg.h"
 #include <pthread.h>
-#define BUF_LEN 10
+#define BUF_LEN 100
 #define LIMIT 2
 
 
