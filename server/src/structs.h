@@ -7,7 +7,7 @@
 #define LIMIT 2
 
 
-typedef struct game
+typedef struct game //moze przeniesc connections do game?? i wtedy do clientSession przeniesc pole name[]
 {
 	char board[9];
 	enum
@@ -17,6 +17,8 @@ typedef struct game
 		DRAW,
 		none
 	} winner;
+	char player_name[2][20];
+	int active_player;
 } game;
 
 

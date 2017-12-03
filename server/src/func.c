@@ -5,7 +5,8 @@ void *cl_session(void* arg)
 	char *buf;
   int msgLen;
   int conIdx = *(int *)(arg);
-	while(GAME.winner == none)
+  printf("cl session id:%d\n", conIdx);
+	while(connections[conIdx].finished == 0)
 	{
     buf = malloc(1500);
     do
@@ -14,122 +15,18 @@ void *cl_session(void* arg)
         msgLen = recv(connections[conIdx].fd, buf, 1500, 0);
         message_t temp;
         memcpy(&temp, buf, msgLen);
-       
-        switch(temp.type)
-        {
-        	case JOIN:
-        		printf("join recieved. name = %s\n",temp.data.name);
-        		while(connections[(conIdx+1)%2].notEmpty == 0); // wait for 2nd conn
-        		IPCbuffer.player[IPCbuffer.writeIdx] = (conIdx+1)%2;
-        		IPCbuffer.messages[IPCbuffer.writeIdx] = temp;
-        		printf("join sent to %i\n", (conIdx+1)%2);
-        		// send start to opposite player
-        		IPCbuffer.writeIdx++;
-        		if (IPCbuffer.writeIdx == BUF_LEN)
-            	IPCbuffer.writeIdx = 0;
-            	
-           	message_t start_msg;
-           	start_msg.type = START;
-           	start_msg.len = 2 + 4;
-           	start_msg.data.turn = (conIdx+1)%2; 
-        		IPCbuffer.player[IPCbuffer.writeIdx] = (conIdx+1)%2;
-        		IPCbuffer.messages[IPCbuffer.writeIdx] = start_msg;
-        	break;
-        	case MOVE:
-        		//przeslij move do drugiego gracza
-        		printf("move recieved %i %i\n",temp.data.move.x,temp.data.move.y);
-        		IPCbuffer.player[IPCbuffer.writeIdx] = (conIdx+1)%2;
-        		IPCbuffer.messages[IPCbuffer.writeIdx] = temp;
-        		//jesli ruch powoduje wygrana: wyslij obu graczom status i zamknij polaczenia i thready
-        		if(conIdx)
-        			GAME.board[temp.data.move.x+temp.data.move.y*3] = 'x';
-        		else
-        			GAME.board[temp.data.move.x+temp.data.move.y*3] = 'o';
-        }
+        IPCbuffer.player[IPCbuffer.writeIdx] = conIdx;
+        IPCbuffer.messages[IPCbuffer.writeIdx] = temp;
+        printf("Msg added to buffer\n");
         
         IPCbuffer.writeIdx++;
         if (IPCbuffer.writeIdx == BUF_LEN)
             IPCbuffer.writeIdx = 0;
             
-       	if(wincheck(&GAME))
-        {
-					message_t msg1;
-       		msg1.type = STATE;
-       		msg1.data.state = win;
-       		message_t msg2;
-      		msg2.type = STATE;
-      		msg2.data.state = lose;
-       		
-       		switch(GAME.winner)
-       		{	
-       			case O:
-       			/*message_t msg1;
-       			msg1.type = STATE;
-       			msg1.data.state = win;
-       			message_t msg2;
-       			msg2.type = STATE;
-       			msg2.data.state = lose;*/
-       			
-       			IPCbuffer.player[IPCbuffer.writeIdx] = 0;
-        		IPCbuffer.messages[IPCbuffer.writeIdx] = msg1;
-        		
-        		IPCbuffer.writeIdx++;
-       			if (IPCbuffer.writeIdx == BUF_LEN)
-         		  IPCbuffer.writeIdx = 0;
-         		  
-        		IPCbuffer.player[IPCbuffer.writeIdx] = 1;
-        		IPCbuffer.messages[IPCbuffer.writeIdx] = msg2;
-        		
-        		IPCbuffer.writeIdx++;
-       			if (IPCbuffer.writeIdx == BUF_LEN)
-         		  IPCbuffer.writeIdx = 0;
-       			break;
-       			
-       			case X:
-       			
-       			IPCbuffer.player[IPCbuffer.writeIdx] = 0;
-        		IPCbuffer.messages[IPCbuffer.writeIdx] = msg2;
-        		
-        		IPCbuffer.writeIdx++;
-       			if (IPCbuffer.writeIdx == BUF_LEN)
-         		  IPCbuffer.writeIdx = 0;
-         		  
-        		IPCbuffer.player[IPCbuffer.writeIdx] = 1;
-        		IPCbuffer.messages[IPCbuffer.writeIdx] = msg1;
-        		
-        		IPCbuffer.writeIdx++;
-       			if (IPCbuffer.writeIdx == BUF_LEN)
-         		  IPCbuffer.writeIdx = 0;
-       			break;
-       			
-       			case DRAW: ;
-       			message_t msg;
-       			msg.type = STATE;
-       			msg.data.state = draw;
-       			IPCbuffer.player[IPCbuffer.writeIdx] = 0;
-        		IPCbuffer.messages[IPCbuffer.writeIdx] = msg;
-        		
-        		IPCbuffer.writeIdx++;
-       			if (IPCbuffer.writeIdx == BUF_LEN)
-         		  IPCbuffer.writeIdx = 0;
-         		  
-        		IPCbuffer.player[IPCbuffer.writeIdx] = 1;
-        		IPCbuffer.messages[IPCbuffer.writeIdx] = msg;
-        		
-        		IPCbuffer.writeIdx++;
-       			if (IPCbuffer.writeIdx == BUF_LEN)
-         		  IPCbuffer.writeIdx = 0;
-       			break;
-       		}
-       		
-       		reset(&GAME);
-       		while(IPCbuffer.readIdx != IPCbuffer.writeIdx);
-					close(connections[conIdx].fd);
-					connections[conIdx].finished = 1;
-       	}
+       	
         
     }
-    while (1);
+    
     free(buf);
 
 
@@ -147,17 +44,67 @@ void *sender(void *arg)
         {
             printf("Ipc buffer sending\n");
             message_t *msg = &IPCbuffer.messages[IPCbuffer.readIdx];
-            
-            if(connections[IPCbuffer.player[IPCbuffer.readIdx]].notEmpty)
+            																//TODO ----V----
+            	//ifended wywala graczy - clsession() bedzie sie zamykal gdy finished
+            	//dodac semafor do clsess
+            	// #przyejrzystosckodu
+ 
+            switch(msg->type)
             {
-              send(connections[IPCbuffer.player[IPCbuffer.readIdx]].fd, msg, msg->len, 0);
-              printf("Ipc sent type: %hhu", msg->type);
+            	case JOIN:
+            		printf("join recieved. name = %s\n",msg->data.name);
+            		//GAME.player_name[IPCbuffer.player[IPCbuffer.readIdx]] = msg->data.name;
+            		memcpy(GAME.player_name[IPCbuffer.player[IPCbuffer.readIdx]], msg, 20);
+            		if(connections[0].notEmpty == 1 && connections[1].notEmpty == 1) //czy obaj gracze sa polaczeni
+            		{
+            			//wyslanie obu graczom joina i start(losowanie kto zaczyna), zapisanie odpowiedniego gracza w active_player
+            			message_t join;// = {JOIN, 22, GAME.player_name[1]};
+            			join.type = JOIN; join.len = 22;
+            			memcpy(join.data.name,GAME.player_name[0], 20);
+            			send(connections[1].fd, &join, join.len, 0);
+            			memcpy(join.data.name,GAME.player_name[1], 20);
+            			send(connections[0].fd, &join, join.len, 0);
+            			int starting = rand() % 2; //losowanie zaczynajacego
+            			GAME.active_player = starting;
+            			message_t start;
+            			start.type = START; start.len = 6;
+            			start.data.turn = true;
+            			send(connections[starting].fd, &start, start.len, 0);
+            			starting = (starting + 1) % 2;
+            			start.data.turn = false;
+            			send(connections[starting].fd, &start, start.len, 0);
+            		}
+            	break;
+            	case MOVE:
+            		if( (GAME.board[msg->data.move.x+msg->data.move.y*3] == '-') && (IPCbuffer.player[IPCbuffer.readIdx] == GAME.active_player) && (connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].notEmpty == 1) )
+            		//czy ruch jest poprawny, czy pochodzi od poprawnego gracza(active player) i czy drugi gracz jest polaczony
+            		{
+            			printf("Recieved correct move\n");
+            			GAME.active_player ? GAME.board[msg->data.move.x+msg->data.move.y*3] == 'x' : GAME.board[msg->data.move.x+msg->data.move.y*3] == 'o';
+            			send(connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].fd, msg, msg->len, 0);
+            			GAME.active_player = (GAME.active_player + 1) % 2;
+            			//dopisujemy do planszy i wysylamy do drugiego gracza, ustawiamy active_player na drugiego gracza
+            			ifended();
+            		}
+            		else //jesli nie to wysylamy refuse do gracza
+            		{
+            			message_t ref; ref.type = REFUSE; ref.len = 2;
+            			send(connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].fd, ref, ref.len, 0);
+            			printf("Move refused\n");
+            		}
+            	break;
+            	case MESSAGE:
+            		if(connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].notEmpty == 1) //sprawdzenie czy drugi gracz jest polaczony
+            		{
+            			send(connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].fd, msg, msg->len, 0);
+            			printf("Message forwarded\n");
+            		}
+            	break;
             }
-            
             IPCbuffer.readIdx++;
             IPCbuffer.readIdx %= BUF_LEN;
             
-            //free(&IPCbuffer.messages[IPCbuffer.readIdx]); <-wysypuje sie tu
+            
         }
     }
 }
@@ -224,4 +171,78 @@ void reset(game* game)
 {
 	for(int i = 0; i < 9; ++i) game->board[i] = '-';
 	game->winner = none;
+}
+
+int ifended() //sprawdzic poprawnosc TODO
+{
+	if(wincheck(&GAME))
+     	   {
+				message_t msg1;
+    	   		msg1.type = STATE;
+    	   		msg1.data.state = win;
+     	  		message_t msg2;
+     	 		msg2.type = STATE;
+     		 	msg2.data.state = lose;
+       		
+       			switch(GAME.winner)
+       			{	
+       				case O:
+       				
+       				IPCbuffer.player[IPCbuffer.writeIdx] = 0;
+        			IPCbuffer.messages[IPCbuffer.writeIdx] = msg1;
+        			
+        			IPCbuffer.writeIdx++;
+       				if (IPCbuffer.writeIdx == BUF_LEN)
+       		 		  IPCbuffer.writeIdx = 0;
+         		  
+        			IPCbuffer.player[IPCbuffer.writeIdx] = 1;
+        			IPCbuffer.messages[IPCbuffer.writeIdx] = msg2;
+        			
+        			IPCbuffer.writeIdx++;
+       				if (IPCbuffer.writeIdx == BUF_LEN)
+        	 		  IPCbuffer.writeIdx = 0;
+       				break;
+       			
+       				case X:
+       			
+       				IPCbuffer.player[IPCbuffer.writeIdx] = 0;
+       		 		IPCbuffer.messages[IPCbuffer.writeIdx] = msg2;
+       	 		
+       		 		IPCbuffer.writeIdx++;
+       				if (IPCbuffer.writeIdx == BUF_LEN)
+       	  		  IPCbuffer.writeIdx = 0;
+         		  
+       		 		IPCbuffer.player[IPCbuffer.writeIdx] = 1;
+       		 		IPCbuffer.messages[IPCbuffer.writeIdx] = msg1;
+       	 		
+       		 		IPCbuffer.writeIdx++;
+       				if (IPCbuffer.writeIdx == BUF_LEN)
+       	  		  IPCbuffer.writeIdx = 0;
+       				break;
+       			
+       				case DRAW: ;
+       				message_t msg;
+       				msg.type = STATE;
+       				msg.data.state = draw;
+       				IPCbuffer.player[IPCbuffer.writeIdx] = 0;
+       		 		IPCbuffer.messages[IPCbuffer.writeIdx] = msg;
+        		
+        			IPCbuffer.writeIdx++;
+       				if (IPCbuffer.writeIdx == BUF_LEN)
+         			  IPCbuffer.writeIdx = 0;
+         		  
+        			IPCbuffer.player[IPCbuffer.writeIdx] = 1;
+        			IPCbuffer.messages[IPCbuffer.writeIdx] = msg;
+        			
+        			IPCbuffer.writeIdx++;
+       				if (IPCbuffer.writeIdx == BUF_LEN)
+         			  IPCbuffer.writeIdx = 0;
+       				break;
+       		}
+       		
+       		reset(&GAME);
+       		while(IPCbuffer.readIdx != IPCbuffer.writeIdx);
+					close(connections[conIdx].fd);
+					connections[conIdx].finished = 1;
+       	}
 }

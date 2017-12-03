@@ -10,7 +10,6 @@
 
 #include "func.h"
 
-//TODO naprawic includy - ifndef
 int main()
 {
 	memset(&IPCbuffer, 0, sizeof(struct buffer));
@@ -61,7 +60,8 @@ int main()
 
       if (connections[i].notEmpty == 0)
       {
-         if (pthread_create(&connections[i].process, NULL, cl_session,  &i) != 0)
+      	 int* temp = (int*) malloc(4);
+         if (pthread_create(&connections[i].process, NULL, cl_session,  temp) != 0)
          {
             perror("Can't create new thread");
             send(newFd, "Can't create new thread for connection handle", 48, 0);
@@ -69,7 +69,7 @@ int main()
          }
          else
          {
-         		printf("New connection established");
+         	printf("New connection established");
             connections[i].fd = newFd;
             connections[i].notEmpty = 1;
          }
