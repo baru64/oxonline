@@ -15,7 +15,7 @@ void *cl_session(void* arg)
         message_t temp;
         memcpy(&temp, buf, msgLen);
         
-       // pthread_mutex_lock(&mutex); //zamykamy semafor
+        pthread_mutex_lock(&mutex); //zamykamy semafor
         
         IPCbuffer.player[IPCbuffer.writeIdx] = conIdx;
         IPCbuffer.messages[IPCbuffer.writeIdx] = temp;
@@ -25,7 +25,7 @@ void *cl_session(void* arg)
         if (IPCbuffer.writeIdx == BUF_LEN)
             IPCbuffer.writeIdx = 0;
             
-       	//pthread_mutex_unlock(&mutex); //otwieramy semafor
+       	pthread_mutex_unlock(&mutex); //otwieramy semafor
         
     }
     
