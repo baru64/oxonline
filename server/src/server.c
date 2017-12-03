@@ -18,6 +18,12 @@ int main()
 	reset(&GAME);
 	int fdListen;
 	
+	if (pthread_mutex_init(&mutex, NULL) != 0)
+    {
+        printf("\n mutex init failed\n");
+        return 1;
+    }
+	
   int port = 2000;
   struct sockaddr_in si_local;
   if ((fdListen=socket(AF_INET, SOCK_STREAM, 0))==-1)
@@ -53,8 +59,8 @@ int main()
     {
       if (connections[i].finished)
       {
-         connections[i].finished = 0;
          pthread_join(connections[i].process, NULL);
+         connections[i].finished = 0;
          connections[i].notEmpty = 0;
       }
 

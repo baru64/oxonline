@@ -10,7 +10,7 @@ typedef enum
   MOVE,			//pole move
   START,		//pole turn
   STATE,		//pole game_state
-  MESSAGE;		//wiadomosc - pole text
+  MESSAGE		//wiadomosc - pole text
 } type_t;		//
 
 typedef enum
