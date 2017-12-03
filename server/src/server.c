@@ -67,6 +67,7 @@ int main()
       if (connections[i].notEmpty == 0)
       {
       	 int* temp = (int*) malloc(4);
+      	 *temp = i;
          if (pthread_create(&connections[i].process, NULL, cl_session,  temp) != 0)
          {
             perror("Can't create new thread");
