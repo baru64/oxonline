@@ -52,15 +52,17 @@ void *sender(void *arg)
             	case JOIN:
             		printf("join recieved. name = %s\n",msg->data.name);
             		
-            		memcpy(GAME.player_name[IPCbuffer.player[IPCbuffer.readIdx]], msg, 20);
+            		memcpy(GAME.player_name[IPCbuffer.player[IPCbuffer.readIdx]], msg->data.name, 20);
             		if(connections[0].notEmpty == 1 && connections[1].notEmpty == 1) //czy obaj gracze sa polaczeni
             		{
             			//wyslanie obu graczom joina i start(losowanie kto zaczyna), zapisanie odpowiedniego gracza w active_player
             			message_t join;
             			join.type = JOIN; join.len = 22;
             			memcpy(join.data.name,GAME.player_name[0], 20);
+            			printf("name: %s \n",GAME.player_name[0]);
             			send(connections[1].fd, &join, join.len, 0);
             			memcpy(join.data.name,GAME.player_name[1], 20);
+            			printf("name: %s \n",GAME.player_name[1]);
             			send(connections[0].fd, &join, join.len, 0);
             			int starting = rand() % 2; //losowanie zaczynajacego
             			GAME.active_player = starting;
@@ -75,7 +77,10 @@ void *sender(void *arg)
             		}
             	break;
             	case MOVE:
-            		if( (GAME.board[msg->data.move.x+msg->data.move.y*3] == '-') && (IPCbuffer.player[IPCbuffer.readIdx] == GAME.active_player) && (connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].notEmpty == 1) )
+            		printf("Move recieved\n");
+            		if( (GAME.board[msg->data.move.x+msg->data.move.y*3] == '-')
+            		 && (IPCbuffer.player[IPCbuffer.readIdx] == GAME.active_player)
+            		 && (connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].notEmpty == 1) )
             		//czy ruch jest poprawny, czy pochodzi od poprawnego gracza(active player) i czy drugi gracz jest polaczony
             		{
             			printf("Recieved correct move\n");
