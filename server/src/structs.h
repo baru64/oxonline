@@ -3,11 +3,11 @@
 #define STRUCTS_H
 #include "msg.h"
 #include <pthread.h>
-#define BUF_LEN 10
+#define BUF_LEN 100
 #define LIMIT 2
 
 
-typedef struct game
+typedef struct game //moze przeniesc connections do game?? i wtedy do clientSession przeniesc pole name[]
 {
 	char board[9];
 	enum
@@ -17,6 +17,8 @@ typedef struct game
 		DRAW,
 		none
 	} winner;
+	char player_name[2][20];
+	int active_player;
 } game;
 
 
@@ -39,4 +41,5 @@ struct clientSession
 game GAME;
 struct buffer IPCbuffer;
 struct clientSession connections[LIMIT];
+pthread_mutex_t mutex;
 #endif

@@ -10,6 +10,7 @@ typedef enum
   MOVE,			//pole move
   START,		//pole turn
   STATE,		//pole game_state
+  MESSAGE		//wiadomosc - pole text
 } type_t;		//
 
 typedef enum
@@ -42,6 +43,8 @@ typedef struct msg
 		} turn;
     
 		state_t state;
+		
+		char text[80];
 	} data;
 
 } message_t __attribute__ ((packed));
