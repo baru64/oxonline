@@ -13,6 +13,7 @@ void *cl_session(void* arg)
         memset(buf, 0, 1500);
         msgLen = recv(connections[conIdx].fd, buf, 1500, 0);
         message_t temp;
+        memset(&temp, 0, sizeof(temp));
         memcpy(&temp, buf, msgLen);
         
         pthread_mutex_lock(&mutex); //zamykamy semafor
@@ -70,6 +71,7 @@ void *sender(void *arg)
             			start.type = START; start.len = 6;
             			start.data.turn = true;
             			send(connections[starting].fd, &start, start.len, 0);
+            			printf("sending:%hhu turn:%d\n", start.type, start.data.turn);
             			starting = (starting + 1) % 2;
             			start.data.turn = false;
             			send(connections[starting].fd, &start, start.len, 0);
@@ -77,7 +79,10 @@ void *sender(void *arg)
             		}
             	break;
             	case MOVE:
-            		printf("Move recieved\n");
+            		printf("Move recieved. x=%hhu y=%hhu len=%hhu sizeof=%lu\n", msg->data.move.x,msg->data.move.y,msg->len,sizeof(msg)); //TODO sprawdz czy wysyla sie do drugiego gracza
+            		char temp1[sizeof(msg)];
+            		memcpy(temp1, msg, sizeof(msg));
+            		for(int i = 0; i < sizeof(msg); ++i) printf("%hhu ", temp1[i]);
             		if( (GAME.board[msg->data.move.x+msg->data.move.y*3] == '-')
             		 && (IPCbuffer.player[IPCbuffer.readIdx] == GAME.active_player)
             		 && (connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].notEmpty == 1) )
@@ -89,7 +94,9 @@ void *sender(void *arg)
             			else
             				GAME.board[msg->data.move.x+msg->data.move.y*3] = 'o';
             			
-            			send(connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].fd, msg, msg->len, 0);
+            			send(connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].fd, msg, 8, 0);
+            			printf("Move: x=%hhu y=%hhu len=%hhu\n", msg->data.move.x, msg->data.move.y, msg->len);
+            			printf("Move forwarded\n");
             			GAME.active_player = (GAME.active_player + 1) % 2;
             			//dopisujemy do planszy i wysylamy do drugiego gracza, ustawiamy active_player na drugiego gracza
             			ifended();
