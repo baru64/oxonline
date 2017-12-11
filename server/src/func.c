@@ -94,11 +94,17 @@ void *sender(void *arg)
             			else
             				GAME.board[msg->data.move.x+msg->data.move.y*3] = 'o';
             			
-            			ifended();
+            			int temp_if = 0;
+            			if(ifended()) temp_if = 1;
             			send(connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].fd, msg, 8, 0);
             			printf("Move: x=%hhu y=%hhu len=%hhu\n", msg->data.move.x, msg->data.move.y, msg->len);
             			printf("Move forwarded\n");
             			GAME.active_player = (GAME.active_player + 1) % 2;
+            			if(temp_if) //TODO zrobic to ladniej pozniejs
+            			{
+            				connections[0].finished = 1;
+            				connections[1].finished = 1;
+            			}
             			//dopisujemy do planszy i wysylamy do drugiego gracza, ustawiamy active_player na drugiego gracza
 
             		}
@@ -193,7 +199,7 @@ void reset(game* game)
 	game->winner = none;
 }
 
-void ifended()
+int ifended()
 {
 	if(wincheck(&GAME))
 	{
@@ -210,17 +216,17 @@ void ifended()
        		{	
        			case O:
        			send(connections[0].fd, &msg1, msg1.len, 0);
-       			connections[0].finished = 1;
+       			//connections[0].finished = 1;
        			send(connections[1].fd, &msg2, msg2.len, 0);
-       			connections[1].finished = 1;
+       			//connections[1].finished = 1;
        			printf("O won.\n");
        			break;
        			
        			case X:
        			send(connections[0].fd, &msg2, msg2.len, 0);
-       			connections[0].finished = 1;
+       			//connections[0].finished = 1;
        			send(connections[1].fd, &msg1, msg1.len, 0);
-       			connections[1].finished = 1;
+       			//connections[1].finished = 1;
        			printf("X won.\n");
        			break;
        		
@@ -229,9 +235,9 @@ void ifended()
        			msg.type = STATE; msg.len = 6;
        			msg.data.state = draw;
        			send(connections[0].fd, &msg, msg.len, 0);
-       			connections[0].finished = 1;
+       			//connections[0].finished = 1;
        			send(connections[1].fd, &msg, msg.len, 0);
-       			connections[1].finished = 1;
+       			//connections[1].finished = 1;
        			printf("Draw.\n");
        			break;
        			case none:
@@ -239,5 +245,7 @@ void ifended()
        		}
        		
        		reset(&GAME);
+       		return 1;
 	}
+	return 0;
 }
