@@ -65,6 +65,7 @@ void *sender(void *arg)
             			memcpy(join.data.name,GAME.player_name[1], 20);
             			printf("name: %s \n",GAME.player_name[1]);
             			send(connections[0].fd, &join, join.len, 0);
+            			srand (time(NULL));
             			int starting = rand() % 2; //losowanie zaczynajacego
             			GAME.active_player = starting;
             			message_t start;
