@@ -105,7 +105,7 @@ void *sender(void *arg)
             		else //jesli nie to wysylamy refuse do gracza
             		{
             			message_t ref; ref.type = REFUSE; ref.len = 2;
-            			send(connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].fd, &ref, ref.len, 0);
+            			send(connections[IPCbuffer.player[IPCbuffer.readIdx]].fd, &ref, ref.len, 0);
             			printf("Move refused\n");
             		}
             	break;
