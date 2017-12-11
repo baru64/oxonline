@@ -80,7 +80,7 @@ void *sender(void *arg)
             		}
             	break;
             	case MOVE:
-            		printf("Move recieved. x=%hhu y=%hhu len=%hhu sizeof=%lu\n", msg->data.move.x,msg->data.move.y,msg->len,sizeof(msg)); //TODO sprawdz czy wysyla sie do drugiego gracza
+            		printf("Move recieved. x=%hhu y=%hhu len=%hhu sizeof=%lu\n", msg->data.move.x,msg->data.move.y,msg->len,sizeof(msg)); 
             		char temp1[sizeof(msg)];
             		memcpy(temp1, msg, sizeof(msg));
             		for(int i = 0; i < sizeof(msg); ++i) printf("%hhu ", temp1[i]);
@@ -119,7 +119,8 @@ void *sender(void *arg)
             	case MESSAGE:
             		if(connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].notEmpty == 1) //sprawdzenie czy drugi gracz jest polaczony
             		{
-            			send(connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].fd, msg, msg->len, 0);
+            			printf("Recieved message:%s size:%lu\n",msg->data.text,sizeof(msg->data.text));
+            			send(connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].fd, msg, 84, 0);
             			printf("Message forwarded\n");
             		}
             	break;
