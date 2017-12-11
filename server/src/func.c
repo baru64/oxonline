@@ -94,12 +94,13 @@ void *sender(void *arg)
             			else
             				GAME.board[msg->data.move.x+msg->data.move.y*3] = 'o';
             			
+            			ifended();
             			send(connections[(IPCbuffer.player[IPCbuffer.readIdx]+1)%2].fd, msg, 8, 0);
             			printf("Move: x=%hhu y=%hhu len=%hhu\n", msg->data.move.x, msg->data.move.y, msg->len);
             			printf("Move forwarded\n");
             			GAME.active_player = (GAME.active_player + 1) % 2;
             			//dopisujemy do planszy i wysylamy do drugiego gracza, ustawiamy active_player na drugiego gracza
-            			ifended();
+
             		}
             		else //jesli nie to wysylamy refuse do gracza
             		{

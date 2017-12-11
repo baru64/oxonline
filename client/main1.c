@@ -190,8 +190,7 @@ int main(int argc, char *argv[])
     {
     	message_t recvd;
     	message_t tosend;
-    	//TODO recv
-    	//wysylanie wiadomosci
+    	//TODO
     	//cofanie narysowaniego ostatnio ruchu gdy refuse
     	char* Bufor = (char*)malloc(1500);
     	memset( Bufor, 0, 1500 );
@@ -256,11 +255,11 @@ int main(int argc, char *argv[])
     		}
     		break;
     		
-    		case MOVE:
-    			//TODO zaznaczanie ruchu przeciwnika
+    		case MOVE: //TODO gdy przegramy musimy podac jeszcze ruch zeby to zobaczyc, naprawic
+
     			printf("recieved: x:%hhu y:%hhu\n", recvd.data.move.x, recvd.data.move.y);
     			zaznacz_ruch(&mojaPlansza, aktGracz, recvd.data.move.x+1, recvd.data.move.y+1);
-    			//TODO czy int ma znaczenie w zaznacz_ruch
+
 				pokaz_plansze(&mojaPlansza);
 				zmien_gracza(&aktGracz);
 				
@@ -282,7 +281,7 @@ int main(int argc, char *argv[])
 				zmien_gracza(&aktGracz);
     		break;
     		
-    		case MESSAGE:
+    		case MESSAGE: //TODO wysylanie messagow
     			printf("%s: %.80s", player2, recvd.data.text);
     		break;
     		
@@ -290,7 +289,7 @@ int main(int argc, char *argv[])
     			game_end = 1;
     			if(recvd.data.state == win)
     				printf("Wygrales!\n");
-    			else if(recvd.data.state == lose)
+    			if(recvd.data.state == lose)
     				printf("Przegrales.\n");
     			else printf("Remis.\n");
     		break;
