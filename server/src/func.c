@@ -129,42 +129,46 @@ uint8_t wincheck(game* game)
   //Sprawdzanie wierszy
   for (int y=0; y<3; y++)
   {
-    if ((game->board[3*y] == game->board[3*y + 1]) && (game->board[3*y] == game->board[3*y + 2]))
+    if ((game->board[3*y] == game->board[3*y + 1]) && (game->board[3*y] == game->board[3*y + 2]) && (game->board[3*y]!= '-'))
     {
       if (game->board[3*y] == 'o')
         game->winner = O;
       if (game->board[3*y] == 'x')
         game->winner = X;
+      printf("wincheck1\n");
       return 1;
     }
   }
   //Sprawdzanie kolumn
   for (int x=0; x<3; x++)
   {
-    if ((game->board[x] == game->board[x + 3]) && (game->board[x] == game->board[x + 6]))
+    if ((game->board[x] == game->board[x + 3]) && (game->board[x] == game->board[x + 6]) && (game->board[x]!= '-'))
     {
       if (game->board[x] == 'o')
         game->winner = O;
       if (game->board[x] == 'x')
         game->winner = X;
+      printf("wincheck2\n");
       return 1;
     }
   }
   //Sprawdzanie przekątnych
-  if ((game->board[0] == game->board[4]) && (game->board[0] == game->board[8]))
+  if ((game->board[0] == game->board[4]) && (game->board[0] == game->board[8]) && (game->board[0]!= '-'))
   {
     if (game->board[4] == 'o')
       game->winner = O;
     if (game->board[4] == 'x')
       game->winner = X;
+    printf("wincheck3\n");
     return 1;
   }
-  if ((game->board[2] == game->board[4]) && (game->board[2] == game->board[6]))
+  if ((game->board[2] == game->board[4]) && (game->board[2] == game->board[6]) && (game->board[2]!= '-'))
   {
     if (game->board[4] == 'o')
       game->winner = O;
     if (game->board[4] == 'x')
       game->winner = X;
+    printf("wincheck4\n");
     return 1;
   }
   //sprawdzanie możliwości wykonania ruchu
@@ -198,7 +202,9 @@ void ifended()
      	 	message_t msg2;
      	 	msg2.type = STATE; msg2.len = 6;
      	 	msg2.data.state = lose;
-    		
+     	 	msg1.len = (uint8_t)sizeof(msg1);
+     	 	msg2.len = (uint8_t)sizeof(msg2);
+    		printf("Game finished, sending state.winner=%d\n", GAME.winner);
    			switch(GAME.winner)
        		{	
        			case O:
@@ -206,6 +212,7 @@ void ifended()
        			connections[0].finished = 1;
        			send(connections[1].fd, &msg2, msg2.len, 0);
        			connections[1].finished = 1;
+       			printf("O won.\n");
        			break;
        			
        			case X:
@@ -213,7 +220,7 @@ void ifended()
        			connections[0].finished = 1;
        			send(connections[1].fd, &msg1, msg1.len, 0);
        			connections[1].finished = 1;
-       			
+       			printf("X won.\n");
        			break;
        		
        			case DRAW: ;
@@ -224,7 +231,10 @@ void ifended()
        			connections[0].finished = 1;
        			send(connections[1].fd, &msg, msg.len, 0);
        			connections[1].finished = 1;
+       			printf("Draw.\n");
        			break;
+       			case none:
+       			printf("Something is no yes XD\n");
        		}
        		
        		reset(&GAME);
