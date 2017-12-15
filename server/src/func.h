@@ -10,9 +10,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <time.h>
 void *cl_session(void *arg);
 void *sender(void *arg);
 uint8_t wincheck(game* game);
 void reset(game* game);
-void ifended();
+int ifended();
 #endif

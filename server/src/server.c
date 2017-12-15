@@ -10,7 +10,7 @@
 
 #include "func.h"
 
-int main()
+int main(int argc, char *argv[])
 {
 	memset(&IPCbuffer, 0, sizeof(struct buffer));
 	memset(connections, 0, sizeof(connections));
@@ -23,8 +23,12 @@ int main()
         printf("\n mutex init failed\n");
         return 1;
     }
+    int port = 2000;
+    if(argc > 1)
+    {
+		port = atoi(argv[1]);
+	}
 	
-  int port = 2000;
   struct sockaddr_in si_local;
   if ((fdListen=socket(AF_INET, SOCK_STREAM, 0))==-1)
   {
