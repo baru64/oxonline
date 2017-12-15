@@ -12,11 +12,11 @@
 #include <errno.h>
 #include "msg.h"
 
-//Serwer domy�lny
+//Serwer domyslny
 #define SERVER "127.0.0.1"
 
 /* Server's port number */
-#define SERVPORT 2000
+#define SERVPORT 2015
 
 typedef enum
 {
@@ -92,8 +92,8 @@ int zaznacz_ruch_n(plansza_t *plansza, gracz_t gracz, int nrPola)
 
 int zaznacz_ruch(plansza_t *plansza, gracz_t gracz, int nrWiersza, int nrKolumny)
 {
-    nrWiersza--;
-    nrKolumny--;
+    //nrWiersza--;
+    //nrKolumny--;
     int nrPola = 3*nrWiersza + nrKolumny;
     return zaznacz_ruch_n(plansza, gracz, nrPola);
 }
@@ -111,6 +111,8 @@ void zmien_gracza(gracz_t *gracz)
 {
     *gracz = (*gracz == G_KOLKO) ? G_KRZYZYK : G_KOLKO;
 }
+
+
 //Argumenty a.out serverIpOrName serverPort
 int main(int argc, char *argv[])
 {
@@ -168,141 +170,199 @@ int main(int argc, char *argv[])
     else
         printf("Ustanowiono polaczenie\n");
 
-
+	
+	// BUFOR, TEMP I SENDBUF
+    char * Bufor;
+    message_t temp;
     message_t sendbuf;
 
-    printf("Podaj imie: ");
-    char player1[20];
-    char player2[20];
-    scanf("%19s", player1);
-    sendbuf.type=JOIN;
-    strcpy(sendbuf.data.name, player1);
-    send(sd, &sendbuf, sizeof(sendbuf), 0);
-    
-    int game_end = 0;
-    int joined = 0;
-    int ssend = 0;
+	
+	message_t test;
+	// OBSLUGA MOJEGO IMIENIA I WYSLANIE JOIN
+    char name1[20];
+	memset(&sendbuf, 0, sizeof(sendbuf));
+	
+    printf("Podaj imie: \n");
+    scanf("%19s", name1);
+	/*
+    sendbuf->type=JOIN;
+    strcpy(sendbuf->data.name, name1);
+    send(sd, sendbuf, sizeof(sendbuf), 0);
+	free(sendbuf);
+	
+	*/
+	 test.type=JOIN;
+    strcpy(test.data.name, name1);
+    send(sd, &test, sizeof(test), 0);
+	
+	// ZMIENNE PRZYDATNE W GRZE
+	char dGracz[20];
+	int inGame = 0;
+	int nrWiersza;
+    int nrKolumny;
     plansza_t mojaPlansza;
     czysc_plansze(&mojaPlansza);
     gracz_t aktGracz = G_KOLKO;
-    
-    while(!game_end)
-    {
-    	message_t recvd;
-    	message_t tosend;
-    	//TODO
-    	//cofanie narysowaniego ostatnio ruchu gdy refuse
-    	char* Bufor = (char*)malloc(1500);
-    	memset( Bufor, 0, 1500 );
-  		memset( &recvd, 0, sizeof(recvd) );
-  		memset( &tosend, 0, sizeof(tosend) );
-    	msgLen = recv(sd, Bufor, 1500, 0);
-		memcpy(&recvd, Bufor, msgLen);
-		char temp1[sizeof(recvd)];
-        memcpy(temp1, &recvd, sizeof(recvd));
-        for(int i = 0; i < sizeof(recvd); ++i) printf("%hhu ", temp1[i]);
-		printf("\ntype: %hhu len: %hhu\n", recvd.type,recvd.len);
-    	uint8_t x,y;
-    	
-    	switch(recvd.type)
-    	{
-    		case JOIN:
-    		if(!joined)
-    		{
-    			strcpy(player2,recvd.data.name);
-    			joined = 1;
-    		}
-    		break;
-    		
-    		case REFUSE:
-    		if(!joined)
-    		{
-    			game_end = 1;
-    			printf("Serwer jest zajety\n");
-    		} 
-    		else 
-    		{
-    			printf("Twoj ruch zostal odrzucony!\n");
-    			//TODO tu zrobic dobrze
-    		}
-    		break;
-    		
-    		case START:
-    		printf("otrzymano turn=%d", recvd.data.turn);
-    		if(recvd.data.turn == true)
-    		{
-    			//printf("halko");
-    			aktGracz = 0;
-    			tosend.type = (uint8_t)MOVE; tosend.len = (uint8_t)4;
-    			printf("Twoj ruch\n");
-					printf("\tpodaj nr wiersza (1-3): ");
-					scanf("%hhu", &tosend.data.move.x);
-					printf("\tpodaj nr kolumny (1-3): ");
-					scanf("%hhu", &tosend.data.move.y);
-					tosend.data.move.x--;
-					tosend.data.move.y--;
-    			printf("sending: x:%hhu y:%hhu\n", tosend.data.move.x, tosend.data.move.y);
-    			
-    			zaznacz_ruch(&mojaPlansza, aktGracz, tosend.data.move.x+1, tosend.data.move.y+1);
-				pokaz_plansze(&mojaPlansza);
-				zmien_gracza(&aktGracz);
-				ssend = 1;
-    		}
-    		else
-    		{
-    			printf("ruch drugiego gracza\n");
-    			aktGracz = 1;
-    		}
-    		break;
-    		
-    		case MOVE: //TODO gdy przegramy musimy podac jeszcze ruch zeby to zobaczyc, naprawic
-
-    			printf("recieved: x:%hhu y:%hhu\n", recvd.data.move.x, recvd.data.move.y);
-    			zaznacz_ruch(&mojaPlansza, aktGracz, recvd.data.move.x+1, recvd.data.move.y+1);
-
-				pokaz_plansze(&mojaPlansza);
-				zmien_gracza(&aktGracz);
+    gracz_t Gracz;
+	int localType = 1;
+	int zmienna = 0;
+	int choice =0;
+	char wiado[80];
+	// START WHILE
+	while(1){	
+			Bufor = (char*)malloc(1500);
+		    memset(Bufor, 0, 1500);
+			memset( &temp, 0, sizeof(temp) );
+			memset( &sendbuf, 0, sizeof(sendbuf) );
+			zmienna = 0;
+			switch(localType){ 		// zarzadzanie nasza gra
+				case 1:   // zwykly odbior z serwera
+					printf("Czekanko na serwerek!\n");
+					msgLen = recv(sd, Bufor, 1500, 0);
+					memcpy(&temp, Bufor, msgLen);
+					char temp1[sizeof(temp)];
+					memcpy(temp1, &temp, sizeof(temp));
+					for(int i = 0; i < sizeof(temp); ++i) printf("%hhu ", temp1[i]);
+					printf("\ntype: %hhu len: %hhu\n", temp.type,temp.len);
+					printf("RECIEVE CORRECT!\n");
+					break;
+				case 2:   // twoj ruch  (SEND MOVE)
+					pokaz_plansze(&mojaPlansza);
+					choice =0;
+					printf("Chcesz wyslac ruch(0) czy wiadomosc(1)?\n");
+					scanf("%d", &choice);
+					switch(choice){ // WYBIERZ TYP NADANIA 	
+						case 0:
+							sendbuf.type=MOVE;
+							printf("Twoj ruch\n");
+							printf("Podaj nr wiersza (1-3): \n");
+							int x,y;
+							scanf("%d", &x);
+							printf("Podaj nr kolumny (1-3): \n");
+							scanf("%d", &y);
+							if(x-1 < 0 || x-1 > 2 || y-1 < 0 || y-1 > 2 ){
+								printf("Podano bledne wspolrzedne\n Sprobuj ponownie.\n");
+								break;
+							}
+							sendbuf.data.move.x = (uint8_t)(x-1);
+							sendbuf.data.move.y = (uint8_t)(y-1);
+							if (zaznacz_ruch(&mojaPlansza, aktGracz, sendbuf.data.move.x, sendbuf.data.move.y) == 0){
+									printf("Podano bledne wspolrzedne\n Sprobuj ponownie\n");
+							}
+							else{
+								send(sd, &sendbuf, sizeof(sendbuf), 0);
+								printf("Wyslano\n");
+								//printf("Wyslano x == %d\n", sendbuf->data.move.x);
+								//printf("Wyslano y == %d\n", sendbuf->data.move.y);
+								pokaz_plansze(&mojaPlansza);
+								zmien_gracza(&aktGracz);
+								zmienna = 1;
+								localType = 1;
+							}
+							break;
+						
+						case 1:
+							printf("Wprowadz wiadomosc: \n");
+							memset(&wiado, 0, 80);
+							scanf("%79s", wiado);
+							printf("%s\n", wiado);
+							sendbuf.type = MESSAGE;
+							strcpy(sendbuf.data.text, wiado);
+							printf("%s\n", sendbuf.data.text);
+							send(sd, &sendbuf, sizeof(sendbuf), 0);
+							break;
+						
+						default:
+							break;
+						
+					} 			
+				default:
+					break;
+			}
+		if(localType == 1 && zmienna == 0){
+			switch(temp.type){   // switch od komunikacji z serwerem
+				case JOIN:            // JOIN
+					strcpy(dGracz, temp.data.name);
+					//memcpy(&dGracz, &temp->data.name, 20);
+					printf("TWOJ PRZECIWNIK: %s\n", dGracz);
+					inGame = 1;
+					break;
+				case START:			  // START
+					if (temp.data.turn){
+						Gracz = G_KOLKO;
+						printf("Jestes kolko\n");
+						localType = 2;
+					}
+					else {
+						Gracz = G_KRZYZYK;
+						printf("Jestes krzyzyk\n");
+					}
+					break;
+					
+				case REFUSE:          // REFUSE
+					// REFUSE NA JOIN
+					if(!inGame){
+					perror("Serwer zajety!\n");
+					close(sd);
+					exit(-1);
+					}
+					else{
+					// REFUSE NA MOVE	
+						printf("ZLE WYSLANY MOVE!!\n");
+					}
+					break;
+	
+				case STATE: 			 // STATE
+					printf("Koniec gry: \n");
+					if(temp.data.state==win){
+						printf("Wygranko!\n");
+						printf("GAME OVER !\n");
+					}
+					else if(temp.data.state==draw){
+						free(Bufor);
+						Bufor = (char*)malloc(1500);
+						memset(Bufor, 0, 1500);
+						memset( &temp, 0, sizeof(temp) );	
+						msgLen = recv(sd, Bufor, 1500, 0);
+						memcpy(&temp, Bufor, msgLen);
+						zaznacz_ruch(&mojaPlansza, aktGracz, temp.data.move.x, temp.data.move.y);
+						printf("Remisik\n");
+						printf("GAME OVER !\n");
+					}
+					else{ // PRZEGRANA - jeszcze dostaniesz MOVE przeciwnika
+						free(Bufor);
+						Bufor = (char*)malloc(1500);
+						memset(Bufor, 0, 1500);
+						memset( &temp, 0, sizeof(temp) );	
+						msgLen = recv(sd, Bufor, 1500, 0);
+						memcpy(&temp, Bufor, msgLen);
+						zaznacz_ruch(&mojaPlansza, aktGracz, temp.data.move.x, temp.data.move.y);
+						pokaz_plansze(&mojaPlansza);
+						printf("Przegranko!\n");
+						printf("GAME OVER !\n");
+					}
+					return 0;
+					break;
 				
-    			tosend.type = (uint8_t)MOVE; tosend.len = (uint8_t)4;
-    			printf("Twoj ruch\n");
-					printf("\tpodaj nr wiersza (1-3): ");
-					scanf("%hhu", &tosend.data.move.x);
-					printf("\tpodaj nr kolumny (1-3): ");
-					scanf("%hhu", &tosend.data.move.y);
-					tosend.data.move.x--;
-					tosend.data.move.y--;
-    			printf("sending: x:%hhu y:%hhu\n", tosend.data.move.x, tosend.data.move.y);
-    			
-    			//zaznacz_ruch(&mojaPlansza, aktGracz, tosend.data.move.x, tosend.data.move.y);
-    			ssend = 1;
-    			
-    			zaznacz_ruch(&mojaPlansza, aktGracz, tosend.data.move.x+1, tosend.data.move.y+1);
-				pokaz_plansze(&mojaPlansza);
-				zmien_gracza(&aktGracz);
-    		break;
-    		
-    		case MESSAGE: //TODO wysylanie messagow
-    			printf("%s: %.80s", player2, recvd.data.text);
-    		break;
-    		
-    		case STATE:
-    			game_end = 1;
-    			if(recvd.data.state == win)
-    				printf("Wygrales!\n");
-    			if(recvd.data.state == lose)
-    				printf("Przegrales.\n");
-    			else printf("Remis.\n");
-    		break;
-    	}
-    	//send tutaj
-    	if(ssend)
-    	{
-    		send(sd, &tosend, sizeof(tosend), 0);
-    		ssend = 0;
-    	}
-    	
-    	free(Bufor);
-    	
-    }
+				case MOVE:            // MOVE
+					zaznacz_ruch(&mojaPlansza, aktGracz, temp.data.move.x, temp.data.move.y);
+					printf("Przed zmiana gracza!\n");
+					zmien_gracza(&aktGracz);
+					localType = 2;
+					break;
+						
+				case MESSAGE:		  // MESSAGE
+					printf("test\n");
+					//printf("Wiadonko od %19s: %79s\n", dGracz, temp->data.text);
+					break;
+				
+					default:
+						printf("RECIEVE CORRECT IN SWITCH BUT NONE TYPE OR BROKEN\n");
+						break;
+			}
+		}
+		free(Bufor);
+	}
+	// KONIEC WHILE
     return 0;
 }
