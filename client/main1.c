@@ -111,7 +111,11 @@ void zmien_gracza(gracz_t *gracz)
 {
     *gracz = (*gracz == G_KOLKO) ? G_KRZYZYK : G_KOLKO;
 }
-
+void getText(char *message, char *variable, int size){
+	printf("\n %s: ", message);
+	fgets(variable, sizeof(char) * size, stdin);
+	sscanf(variable, "%[^\n]", variable);
+}
 
 //Argumenty a.out serverIpOrName serverPort
 int main(int argc, char *argv[])
@@ -176,25 +180,17 @@ int main(int argc, char *argv[])
     message_t temp;
     message_t sendbuf;
 
-	
-	message_t test;
 	// OBSLUGA MOJEGO IMIENIA I WYSLANIE JOIN
     char name1[20];
 	memset(&sendbuf, 0, sizeof(sendbuf));
 	
     printf("Podaj imie: \n");
     scanf("%19s", name1);
-	/*
-    sendbuf->type=JOIN;
-    strcpy(sendbuf->data.name, name1);
-    send(sd, sendbuf, sizeof(sendbuf), 0);
-	free(sendbuf);
 	
-	*/
-	 test.type=JOIN;
-    strcpy(test.data.name, name1);
-    send(sd, &test, sizeof(test), 0);
-	
+    sendbuf.type=JOIN;
+    strcpy(sendbuf.data.name, name1);
+    send(sd, &sendbuf, sizeof(sendbuf), 0);
+
 	// ZMIENNE PRZYDATNE W GRZE
 	char dGracz[20];
 	int inGame = 0;
@@ -220,11 +216,11 @@ int main(int argc, char *argv[])
 					printf("Czekanko na serwerek!\n");
 					msgLen = recv(sd, Bufor, 1500, 0);
 					memcpy(&temp, Bufor, msgLen);
-					char temp1[sizeof(temp)];
-					memcpy(temp1, &temp, sizeof(temp));
-					for(int i = 0; i < sizeof(temp); ++i) printf("%hhu ", temp1[i]);
-					printf("\ntype: %hhu len: %hhu\n", temp.type,temp.len);
-					printf("RECIEVE CORRECT!\n");
+					// char temp1[sizeof(temp)];
+					// memcpy(temp1, &temp, sizeof(temp));
+					// for(int i = 0; i < sizeof(temp); ++i) printf("%hhu ", temp1[i]);
+					// printf("\ntype: %hhu len: %hhu\n", temp.type,temp.len);
+					// printf("RECEIVE CORRECT!\n");
 					break;
 				case 2:   // twoj ruch  (SEND MOVE)
 					pokaz_plansze(&mojaPlansza);
@@ -234,7 +230,7 @@ int main(int argc, char *argv[])
 					switch(choice){ // WYBIERZ TYP NADANIA 	
 						case 0:
 							sendbuf.type=MOVE;
-							printf("Twoj ruch\n");
+							//printf("Twoj ruch\n");
 							printf("Podaj nr wiersza (1-3): \n");
 							int x,y;
 							scanf("%d", &x);
@@ -252,8 +248,8 @@ int main(int argc, char *argv[])
 							else{
 								send(sd, &sendbuf, sizeof(sendbuf), 0);
 								printf("Wyslano\n");
-								//printf("Wyslano x == %d\n", sendbuf->data.move.x);
-								//printf("Wyslano y == %d\n", sendbuf->data.move.y);
+								//printf("Wyslano x == %d\n", sendbuf.data.move.x);
+								//printf("Wyslano y == %d\n", sendbuf.data.move.y);
 								pokaz_plansze(&mojaPlansza);
 								zmien_gracza(&aktGracz);
 								zmienna = 1;
@@ -265,10 +261,8 @@ int main(int argc, char *argv[])
 							printf("Wprowadz wiadomosc: \n");
 							memset(&wiado, 0, 80);
 							scanf("%79s", wiado);
-							printf("%s\n", wiado);
 							sendbuf.type = MESSAGE;
 							strcpy(sendbuf.data.text, wiado);
-							printf("%s\n", sendbuf.data.text);
 							send(sd, &sendbuf, sizeof(sendbuf), 0);
 							break;
 						
@@ -283,7 +277,6 @@ int main(int argc, char *argv[])
 			switch(temp.type){   // switch od komunikacji z serwerem
 				case JOIN:            // JOIN
 					strcpy(dGracz, temp.data.name);
-					//memcpy(&dGracz, &temp->data.name, 20);
 					printf("TWOJ PRZECIWNIK: %s\n", dGracz);
 					inGame = 1;
 					break;
@@ -302,9 +295,9 @@ int main(int argc, char *argv[])
 				case REFUSE:          // REFUSE
 					// REFUSE NA JOIN
 					if(!inGame){
-					perror("Serwer zajety!\n");
-					close(sd);
-					exit(-1);
+						perror("Serwer zajety!\n");
+						close(sd);
+						exit(-1);
 					}
 					else{
 					// REFUSE NA MOVE	
@@ -346,18 +339,17 @@ int main(int argc, char *argv[])
 				
 				case MOVE:            // MOVE
 					zaznacz_ruch(&mojaPlansza, aktGracz, temp.data.move.x, temp.data.move.y);
-					printf("Przed zmiana gracza!\n");
+					//printf("Przed zmiana gracza!\n");
 					zmien_gracza(&aktGracz);
 					localType = 2;
 					break;
 						
 				case MESSAGE:		  // MESSAGE
-					printf("test\n");
-					//printf("Wiadonko od %19s: %79s\n", dGracz, temp->data.text);
+					printf("Wiadomonko od %s: %s\n", dGracz, temp.data.text);
 					break;
 				
 					default:
-						printf("RECIEVE CORRECT IN SWITCH BUT NONE TYPE OR BROKEN\n");
+						printf("RECEIVE CORRECT IN SWITCH BUT NONE TYPE OR BROKEN\n");
 						break;
 			}
 		}

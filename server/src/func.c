@@ -5,29 +5,48 @@ void *cl_session(void* arg)
 	char *buf;
   int msgLen;
   int conIdx = *(int *)(arg);
-  printf("cl session id:%d\n", conIdx);
-	while(connections[conIdx].finished == 0)
-	{
-		buf = malloc(1500);
+  printf("cl session id: %d\n", conIdx);
+  buf = malloc(1500);
 
         memset(buf, 0, 1500);
-        msgLen = recv(connections[conIdx].fd, buf, 1500, 0);
-        message_t temp;
-        memset(&temp, 0, sizeof(temp));
-        memcpy(&temp, buf, msgLen);
+	while(connections[conIdx].finished == 0)
+	{
+		
+        msgLen = recv(connections[conIdx].fd, buf, 1500, MSG_DONTWAIT); //nieblokujace recv
+        if(msgLen > 0)
+        {
+        	message_t temp;
+        	memset(&temp, 0, sizeof(temp));
+        	memcpy(&temp, buf, msgLen);
+
+        		pthread_mutex_lock(&mutex); //zamykamy semafor
+        	
+        		IPCbuffer.player[IPCbuffer.writeIdx] = conIdx;
+        		IPCbuffer.messages[IPCbuffer.writeIdx] = temp;
+        		printf("Msg added to buffer. from %d %d\n", conIdx, IPCbuffer.player[IPCbuffer.writeIdx]);
+        	
+        		IPCbuffer.writeIdx++;
+        		if (IPCbuffer.writeIdx == BUF_LEN)
+       			    IPCbuffer.writeIdx = 0;
+        	    
+       			pthread_mutex_unlock(&mutex); //otwieramy semafor
+
+        	buf = malloc(1500);
+
+        memset(buf, 0, 1500);
+        } 
+        else
+        {
+        	usleep(1000);
+        }
         
-        pthread_mutex_lock(&mutex); //zamykamy semafor
-        
-        IPCbuffer.player[IPCbuffer.writeIdx] = conIdx;
-        IPCbuffer.messages[IPCbuffer.writeIdx] = temp;
-        printf("Msg added to buffer. from %d %d\n", conIdx, IPCbuffer.player[IPCbuffer.writeIdx]);
-        
-        IPCbuffer.writeIdx++;
-        if (IPCbuffer.writeIdx == BUF_LEN)
-            IPCbuffer.writeIdx = 0;
-            
-       	pthread_mutex_unlock(&mutex); //otwieramy semafor
-        
+        if(msgLen == 0) //gdy gracz sie rozlaczy
+        {
+        	printf("Connection closed while in game. id = %d\n", conIdx);
+        	reset(&GAME);
+        	connections[conIdx].finished = 1;
+        	connections[(conIdx+1)%2].finished = 1;
+        }
     }
     
     free(buf);
@@ -35,6 +54,7 @@ void *cl_session(void* arg)
 
 	close(connections[conIdx].fd);
     connections[conIdx].finished = 1;
+    printf("Session %d finished\n", conIdx);
     return NULL;
 }
 
@@ -54,7 +74,8 @@ void *sender(void *arg)
             		printf("join recieved. name = %s\n",msg->data.name);
             		
             		memcpy(GAME.player_name[IPCbuffer.player[IPCbuffer.readIdx]], msg->data.name, 20);
-            		if(connections[0].notEmpty == 1 && connections[1].notEmpty == 1) //czy obaj gracze sa polaczeni
+            		if(connections[0].notEmpty == 1 && connections[1].notEmpty == 1 &&
+            			connections[0].finished == 0 && connections[1].finished == 0) //czy obaj gracze sa polaczeni
             		{
             			//wyslanie obu graczom joina i start(losowanie kto zaczyna), zapisanie odpowiedniego gracza w active_player
             			message_t join;
@@ -71,11 +92,19 @@ void *sender(void *arg)
             			message_t start;
             			start.type = START; start.len = 6;
             			start.data.turn = true;
-            			send(connections[starting].fd, &start, start.len, 0);
+            			while(send(connections[starting].fd, &start, start.len, 0) < 1) //gdyby sie nie chialo wyslac
+            			{
+            				printf("Trying to send start.1\n");
+            				sleep(1);
+            			}
             			printf("sending:%hhu turn:%d\n", start.type, start.data.turn);
             			starting = (starting + 1) % 2;
             			start.data.turn = false;
-            			send(connections[starting].fd, &start, start.len, 0);
+            			while(send(connections[starting].fd, &start, start.len, 0) < 1)
+            			{
+            				printf("Trying to send start.2\n");
+            				sleep(1);
+            			}
             			printf("join forwarded, starting player: %d\n", starting);
             		}
             	break;
@@ -101,10 +130,11 @@ void *sender(void *arg)
             			printf("Move: x=%hhu y=%hhu len=%hhu\n", msg->data.move.x, msg->data.move.y, msg->len);
             			printf("Move forwarded\n");
             			GAME.active_player = (GAME.active_player + 1) % 2;
-            			if(temp_if) //TODO zrobic to ladniej pozniejs
+            			if(temp_if) //TODO zrobic to ladniej pozniej
             			{
             				connections[0].finished = 1;
             				connections[1].finished = 1;
+            				printf("Finished set to 1\n");
             			}
             			//dopisujemy do planszy i wysylamy do drugiego gracza, ustawiamy active_player na drugiego gracza
 
@@ -129,7 +159,7 @@ void *sender(void *arg)
             IPCbuffer.readIdx %= BUF_LEN;
             printf("Read id:%d\n", IPCbuffer.readIdx);
             
-        }
+        } else usleep(2000);
     }
 }
 
@@ -218,17 +248,15 @@ int ifended()
        		{	
        			case O:
        			send(connections[0].fd, &msg1, msg1.len, 0);
-       			//connections[0].finished = 1;
        			send(connections[1].fd, &msg2, msg2.len, 0);
-       			//connections[1].finished = 1;
+
        			printf("O won.\n");
        			break;
        			
        			case X:
        			send(connections[0].fd, &msg2, msg2.len, 0);
-       			//connections[0].finished = 1;
        			send(connections[1].fd, &msg1, msg1.len, 0);
-       			//connections[1].finished = 1;
+
        			printf("X won.\n");
        			break;
        		
@@ -237,10 +265,10 @@ int ifended()
        			msg.type = STATE; msg.len = 6;
        			msg.data.state = draw;
        			send(connections[0].fd, &msg, msg.len, 0);
-       			//connections[0].finished = 1;
        			send(connections[1].fd, &msg, msg.len, 0);
-       			//connections[1].finished = 1;
+
        			printf("Draw.\n");
+       			
        			break;
        			case none:
        			printf("Something is no yes XD\n");

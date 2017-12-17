@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
   while(1)
   {
     int newFd=accept(fdListen, NULL, NULL);
-
+	printf("Accepted new connection.\n");
     int i;
     for(i=0; i<LIMIT; i++)
     {
@@ -87,8 +87,11 @@ int main(int argc, char *argv[])
          break;
       }
     }
+    
+    
     if (i == LIMIT)
     {
+    	printf("Connection refused. i=%d\n", i);
     	message_t temp;
     	temp.type = REFUSE;
     	temp.len = 2;
@@ -96,5 +99,6 @@ int main(int argc, char *argv[])
       close(newFd);
     }
   }
+  printf("End.\n");
   return 0;
 }
