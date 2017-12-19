@@ -3,37 +3,38 @@
 void *cl_session(void* arg)
 {
 	char *buf;
-  int msgLen;
-  int conIdx = *(int *)(arg);
-  printf("cl session id: %d\n", conIdx);
-  buf = malloc(1500);
+	int msgLen;
+	int conIdx = *(int *)(arg);
+	printf("cl session id: %d\n", conIdx);
+	buf = malloc(1500);
 
-        memset(buf, 0, 1500);
+    memset(buf, 0, 1500);
 	while(connections[conIdx].finished == 0)
 	{
-		
+		pthread_mutex_lock(&mutex_conn[conIdx]);//zabezpieczenie gniazda
         msgLen = recv(connections[conIdx].fd, buf, 1500, MSG_DONTWAIT); //nieblokujace recv
+        pthread_mutex_unlock(&mutex_conn[conIdx]);
+        
         if(msgLen > 0)
         {
         	message_t temp;
         	memset(&temp, 0, sizeof(temp));
         	memcpy(&temp, buf, msgLen);
 
-        		pthread_mutex_lock(&mutex); //zamykamy semafor
+        	pthread_mutex_lock(&mutex); //zamykamy semafor zabezpieczajacy bufor
         	
-        		IPCbuffer.player[IPCbuffer.writeIdx] = conIdx;
-        		IPCbuffer.messages[IPCbuffer.writeIdx] = temp;
-        		printf("Msg added to buffer. from %d %d\n", conIdx, IPCbuffer.player[IPCbuffer.writeIdx]);
+        	IPCbuffer.player[IPCbuffer.writeIdx] = conIdx;
+        	IPCbuffer.messages[IPCbuffer.writeIdx] = temp;
+        	printf("Msg added to buffer. from %d %d\n", conIdx, IPCbuffer.player[IPCbuffer.writeIdx]);
         	
-        		IPCbuffer.writeIdx++;
-        		if (IPCbuffer.writeIdx == BUF_LEN)
-       			    IPCbuffer.writeIdx = 0;
+        	IPCbuffer.writeIdx++;
+        	if (IPCbuffer.writeIdx == BUF_LEN)
+       		   IPCbuffer.writeIdx = 0;
         	    
-       			pthread_mutex_unlock(&mutex); //otwieramy semafor
+       		pthread_mutex_unlock(&mutex); //otwieramy semafor
 
         	buf = malloc(1500);
-
-        memset(buf, 0, 1500);
+        	memset(buf, 0, 1500);
         } 
         else
         {
@@ -92,19 +93,23 @@ void *sender(void *arg)
             			message_t start;
             			start.type = START; start.len = 6;
             			start.data.turn = true;
-            			while(send(connections[starting].fd, &start, start.len, 0) < 1) //gdyby sie nie chialo wyslac
-            			{
-            				printf("Trying to send start.1\n");
-            				sleep(1);
-            			}
+            			
+            			usleep(10000); //odstep miedzy wysylaniem
+            			
+            			pthread_mutex_lock(&mutex_conn[starting]);//zabezpieczenie gniazda - chyba niepotrzebne
+            			send(connections[starting].fd, &start, start.len, 0);
+            			pthread_mutex_unlock(&mutex_conn[starting]);
+            			
             			printf("sending:%hhu turn:%d\n", start.type, start.data.turn);
             			starting = (starting + 1) % 2;
             			start.data.turn = false;
-            			while(send(connections[starting].fd, &start, start.len, 0) < 1)
-            			{
-            				printf("Trying to send start.2\n");
-            				sleep(1);
-            			}
+            			
+          				usleep(10000);
+            			
+            			pthread_mutex_lock(&mutex_conn[starting]);//zabezpieczenie gniazda
+            			send(connections[starting].fd, &start, start.len, 0);
+            			pthread_mutex_unlock(&mutex_conn[starting]);
+            			
             			printf("join forwarded, starting player: %d\n", starting);
             		}
             	break;

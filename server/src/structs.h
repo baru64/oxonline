@@ -42,4 +42,5 @@ game GAME;
 struct buffer IPCbuffer;
 struct clientSession connections[LIMIT];
 pthread_mutex_t mutex;
+pthread_mutex_t mutex_conn[2];
 #endif
