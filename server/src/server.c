@@ -18,7 +18,9 @@ int main(int argc, char *argv[])
 	reset(&GAME);
 	int fdListen;
 	
-	if (pthread_mutex_init(&mutex, NULL) != 0)
+	if ((pthread_mutex_init(&mutex, NULL) != 0)
+		&& (pthread_mutex_init(&mutex_conn[0], NULL) != 0)
+		&& (pthread_mutex_init(&mutex_conn[1], NULL) != 0))
     {
         printf("\n mutex init failed\n");
         return 1;

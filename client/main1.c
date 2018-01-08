@@ -213,7 +213,7 @@ int main(int argc, char *argv[])
 			zmienna = 0;
 			switch(localType){ 		// zarzadzanie nasza gra
 				case 1:   // zwykly odbior z serwera
-					printf("Czekanko na serwerek!\n");
+					//printf("Czekanko na serwerek!\n");
 					msgLen = recv(sd, Bufor, 1500, 0);
 					memcpy(&temp, Bufor, msgLen);
 					// char temp1[sizeof(temp)];
