@@ -49,6 +49,38 @@ void czysc_plansze(plansza_t *plansza)
     memset(plansza, BRAK, sizeof(plansza_t));
 }
 
+char pokaz_pole(ruch_t pole)
+{
+    char rezultat;
+    switch (pole)
+    {
+        case KOLKO:
+            rezultat = 'O';
+            break;
+
+        case KRZYZYK:
+            rezultat = 'X';
+            break;
+
+        default:
+            rezultat = '-';
+            break;
+    }
+    return rezultat;
+}
+
+void pokaz_plansze(plansza_t *plansza)
+{
+    int x,y;
+    for (y=0; y<3; y++)
+    {
+        for (x=0; x<3; x++)
+        {
+            printf("%c", pokaz_pole(plansza->pole[3*y+x]));
+        }
+        printf("\n");
+    }
+}
 
 int zaznacz_ruch_n(plansza_t *plansza, gracz_t gracz, int nrPola)
 {
@@ -159,6 +191,7 @@ int bot(plansza_t *plansza)
 	if(m==9)
 	{
 	  srand(time(NULL));
+	  printf("Pusta plansza");
 	  return rand()%9;
 	}
 
@@ -262,7 +295,7 @@ int main(int argc, char *argv[])
 	int polozenie;
     plansza_t mojaPlansza;
     czysc_plansze(&mojaPlansza);
-    gracz_t aktGracz = G_KRZYZYK;
+    gracz_t aktGracz = G_KOLKO;
     gracz_t Gracz;
 	int localType = 1;
 	int zmienna = 0;
@@ -280,22 +313,25 @@ int main(int argc, char *argv[])
 					printf("Czekanko na serwerek!\n");
 					msgLen = recv(sd, Bufor, 1500, 0);
 					memcpy(&temp, Bufor, msgLen);
-					char temp1[sizeof(temp)];
-					memcpy(temp1, &temp, sizeof(temp));
+					//char temp1[sizeof(temp)];
+					//memcpy(temp1, &temp, sizeof(temp));
 					//for(int i = 0; i < sizeof(temp); ++i) printf("%hhu ", temp1[i]);
 					//printf("\ntype: %hhu len: %hhu\n", temp.type,temp.len);
 					printf("RECIEVE CORRECT!\n");
 					break;
 				case 2:   // twoj ruch  (SEND MOVE)
+					pokaz_plansze(&mojaPlansza);
+					sendbuf.type=MOVE;
 					polozenie = bot(&mojaPlansza);
-					if(polozenie==0 || polozenie==1 || polozenie==2)nrWiersza = 0;
-					if(polozenie==3 || polozenie==4 || polozenie==5)nrWiersza = 1;
-					if(polozenie==6 || polozenie==7 || polozenie==8)nrWiersza = 2;
+					printf("Moj ruch:%d\n", polozenie);
+					nrWiersza = polozenie/3;
 					nrKolumny = polozenie%3;
-					sendbuf.data.move.x = (uint8_t)(nrKolumny);
-					sendbuf.data.move.y = (uint8_t)(nrWiersza);
+					printf("Kolumna: %d Wiersz: %d\n", nrKolumny,nrWiersza);
+					sendbuf.data.move.x = (uint8_t)(nrWiersza);
+					sendbuf.data.move.y = (uint8_t)(nrKolumny);
 					zaznacz_ruch(&mojaPlansza, aktGracz, sendbuf.data.move.x, sendbuf.data.move.y);
 					send(sd, &sendbuf, sizeof(sendbuf), 0);
+					printf("Wyslano ruch\n");
 					zmien_gracza(&aktGracz);
 					zmienna = 1;
 					localType = 1;
@@ -307,15 +343,19 @@ int main(int argc, char *argv[])
 		if(localType == 1 && zmienna == 0){
 			switch(temp.type){   // switch od komunikacji z serwerem
 				case JOIN:            // JOIN
+					strcpy(dGracz, temp.data.name);
+					printf("MOJ PRZECIWNIK: %s\n", dGracz);
 					inGame = 1;
 					break;
 				case START:			  // START
 					if (temp.data.turn){
 						Gracz = G_KOLKO;
 						localType = 2;
+						printf("Jestem kolko\n");
 					}
 					else {
 						Gracz = G_KRZYZYK;
+						printf("Jestem krzyzyk\n");						
 					}
 					break;
 
@@ -333,37 +373,47 @@ int main(int argc, char *argv[])
 					break;
 
 				case STATE: 			 // STATE
-					 if(temp.data.state==draw){
+					 printf("Koniec gry: \n");
+					if(temp.data.state==win){
+						printf("Wygranko!\n");
+						printf("GAME OVER !\n");
+					}
+					else if(temp.data.state==draw){
 						free(Bufor);
 						Bufor = (char*)malloc(1500);
 						memset(Bufor, 0, 1500);
-						memset( &temp, 0, sizeof(temp) );
+						memset( &temp, 0, sizeof(temp) );	
 						msgLen = recv(sd, Bufor, 1500, 0);
 						memcpy(&temp, Bufor, msgLen);
 						zaznacz_ruch(&mojaPlansza, aktGracz, temp.data.move.x, temp.data.move.y);
+						printf("Remisik\n");
+						printf("GAME OVER !\n");
 					}
 					else{ // PRZEGRANA - jeszcze dostaniesz MOVE przeciwnika
 						free(Bufor);
 						Bufor = (char*)malloc(1500);
 						memset(Bufor, 0, 1500);
-						memset( &temp, 0, sizeof(temp) );
+						memset( &temp, 0, sizeof(temp) );	
 						msgLen = recv(sd, Bufor, 1500, 0);
 						memcpy(&temp, Bufor, msgLen);
 						zaznacz_ruch(&mojaPlansza, aktGracz, temp.data.move.x, temp.data.move.y);
+						//pokaz_plansze(&mojaPlansza);
+						printf("Przegranko!\n");
+						printf("GAME OVER !\n");
 					}
 					return 0;
 					break;
 
 				case MOVE:            // MOVE
 					zaznacz_ruch(&mojaPlansza, aktGracz, temp.data.move.x, temp.data.move.y);
-					printf("Przed zmiana gracza!\n");
+					//printf("Przed zmiana gracza!\n");
 					zmien_gracza(&aktGracz);
 					localType = 2;
 					break;
 
 				case MESSAGE:		  // MESSAGE
 					printf("test\n");
-					//printf("Wiadonko od %19s: %79s\n", dGracz, temp->data.text);
+					printf("Wiadomonko od %s: %s\n", dGracz, temp.data.text);
 					break;
 
 					default:

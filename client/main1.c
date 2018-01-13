@@ -247,10 +247,10 @@ int main(int argc, char *argv[])
 							}
 							else{
 								send(sd, &sendbuf, sizeof(sendbuf), 0);
-								printf("Wyslano\n");
 								//printf("Wyslano x == %d\n", sendbuf.data.move.x);
 								//printf("Wyslano y == %d\n", sendbuf.data.move.y);
 								pokaz_plansze(&mojaPlansza);
+								printf("Wyslano\n");
 								zmien_gracza(&aktGracz);
 								zmienna = 1;
 								localType = 1;
