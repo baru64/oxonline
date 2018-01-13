@@ -322,7 +322,14 @@ int main(int argc, char *argv[])
 				case 2:   // twoj ruch  (SEND MOVE)
 					pokaz_plansze(&mojaPlansza);
 					sendbuf.type=MOVE;
-					polozenie = bot(&mojaPlansza);
+					//polozenie = bot(&mojaPlansza);
+					do
+					{
+						sleep(1);
+						srand(time(NULL));
+						polozenie = rand() % 9;
+						printf("Wylosowalem:%d\n", polozenie);
+					} while(pokaz_pole(mojaPlansza.pole[polozenie]) != '-');
 					printf("Moj ruch:%d\n", polozenie);
 					nrWiersza = polozenie/3;
 					nrKolumny = polozenie%3;
